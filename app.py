@@ -84,15 +84,13 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
-# 5. NUEVA SECCIÓN: P&S POR COMPAÑÍA (COLUMNAS J, K, L)
+# 5. DISTRIBUCIÓN DE P&S POR COMPAÑÍA (COLUMNAS J, K, L)
 st.subheader("🏢 Distribución de Paz y Salvos por Compañía")
 
-# Calcular los totales por compañía según columnas J, K y L
 total_efi = int(df_filtrado['P&S_EFI'].sum())
 total_ext = int(df_filtrado['P&S_EXT'].sum())
 total_sgh = int(df_filtrado['P&S_SGH'].sum())
 
-# Crear sub-columnas para métricas y gráfico por empresa
 c_emp1, c_emp2 = st.columns([1, 2])
 
 with c_emp1:
@@ -145,7 +143,33 @@ with g2:
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-# 7. TABLA DETALLADA
+st.markdown("---")
+
+# 7. NUEVO GRÁFICO: AVANCE POR CATEGORÍA DE COMPRA
+st.subheader("🏷️ Avance por Categoría de Compra")
+df_cat = df_filtrado.groupby('categoria de compra')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
+df_cat['% Avance'] = (df_cat['p&s tramitados'] / df_cat['P&S requeridos'] * 100).fillna(0)
+
+# Filtrar solo categorías que tengan al menos 1 P&S requerido para limpiar la vista
+df_cat = df_cat[df_cat['P&S requeridos'] > 0].sort_values(by='% Avance', ascending=True)
+
+fig_cat = px.bar(
+    df_cat, 
+    y='categoria de compra', 
+    x='% Avance',
+    orientation='h',
+    text_auto='.1f', 
+    color='% Avance', 
+    color_continuous_scale="Purples",
+    hover_data=['P&S requeridos', 'p&s tramitados'],
+    labels={'categoria de compra': 'Categoría de Compra', '% Avance': '% Avance Tramitado'}
+)
+fig_cat.update_layout(height=max(400, len(df_cat) * 25))
+st.plotly_chart(fig_cat, use_container_width=True)
+
+st.markdown("---")
+
+# 8. TABLA DETALLADA
 st.subheader("📋 Detalle Filtrado de Proveedores")
 columnas_mostrar = ['PROVEEDOR', 'categoria de compra', 'Area Responsable', 'Director responsable', 'Distribucción', 'P&S_EFI', 'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 'avance', 'Resultado Envío Script']
 cols_existentes = [c for c in columnas_mostrar if c in df_filtrado.columns]
