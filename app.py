@@ -18,55 +18,43 @@ SHEET_ID = "1OEkm12emw4sUHjC5r2BdPa9FKBQV6J8TUnVKJi9K_5I"
 GID = "144580645"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
-# Función para cargar datos con caché de 30 segundos (para ver cambios en tiempo real)
-@st.cache_data(ttl=30)
+# Cargar datos desde Google Sheets con refresco rápido
+@st.cache_data(ttl=15)
 def cargar_datos():
     df = pd.read_csv(URL_CSV)
     
-    # Limpiar y normalizar la columna de avance
-    if 'avance' in df.columns:
-        def convertir_avance(val):
-            if pd.isna(val):
-                return 0.0
-            val_str = str(val).replace('%', '').strip()
-            try:
-                num = float(val_str)
-                return num if num <= 1.0 else num / 100.0
-            except:
-                return 0.0
-        
-        df['avance_num'] = df['avance'].apply(convertir_avance)
-    else:
-        df['avance_num'] = 0.0
-        
+    # Normalizar columnas numéricas
+    cols_num = ['P&S requeridos', 'p&s tramitados', 'P&S_EFI', 'P&S_EXT', 'P&S_SGH']
+    for c in cols_num:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+        else:
+            df[c] = 0
+            
     return df
 
 try:
     df = cargar_datos()
 except Exception as e:
-    st.error(f"Error al conectar con la hoja de Google Sheets: {e}")
+    st.error(f"Error al conectar con Google Sheets: {e}")
     st.stop()
 
 # 3. FILTROS DINÁMICOS EN LA BARRA LATERAL (SIDEBAR)
 st.sidebar.header("🔍 Filtros de Visualización")
 
-# Filtro 1: Responsable / Distribución
 resp_list = ["Todos"] + sorted([str(x) for x in df['Distribucción'].dropna().unique()])
 sel_resp = st.sidebar.selectbox("Responsable (Distribución)", resp_list)
 
-# Filtro 2: Director Responsable
 dir_list = ["Todos"] + sorted([str(x) for x in df['Director responsable'].dropna().unique()])
 sel_dir = st.sidebar.selectbox("Director Responsable", dir_list)
 
-# Filtro 3: Categoría de Compra
 cat_list = ["Todos"] + sorted([str(x) for x in df['categoria de compra'].dropna().unique()])
 sel_cat = st.sidebar.selectbox("Categoría de Compra", cat_list)
 
-# Filtro 4: Área Responsable
 area_list = ["Todos"] + sorted([str(x) for x in df['Area Responsable'].dropna().unique()])
 sel_area = st.sidebar.selectbox("Área Responsable", area_list)
 
-# Aplicar los filtros a los datos
+# Aplicar filtros dinámicos
 df_filtrado = df.copy()
 
 if sel_resp != "Todos":
@@ -78,46 +66,88 @@ if sel_cat != "Todos":
 if sel_area != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Area Responsable'] == sel_area]
 
-# 4. TARJETAS DE INDICADORES CLAVE (KPIs)
+# 4. TARJETAS DE INDICADORES CLAVE GENERALES
 total_prov = len(df_filtrado)
-completados = len(df_filtrado[df_filtrado['avance_num'] >= 1.0])
-pendientes = total_prov - completados
-pct_promedio = (df_filtrado['avance_num'].mean() * 100) if total_prov > 0 else 0.0
+req_total = int(df_filtrado['P&S requeridos'].sum())
+tramitados_total = int(df_filtrado['p&s tramitados'].sum())
+
+if req_total > 0:
+    pct_avance_real = (tramitados_total / req_total) * 100
+else:
+    pct_avance_real = 0.0
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Proveedores", total_prov)
-col2.metric("Completados (100%)", completados, delta=f"{(completados/total_prov*100 if total_prov>0 else 0):.1f}%")
-col3.metric("Pendientes", pendientes, delta=f"-{pendientes}", delta_color="inverse")
-col4.metric("% Avance Promedio", f"{pct_promedio:.1f}%")
+col2.metric("P&S Requeridos", req_total)
+col3.metric("P&S Tramitados", tramitados_total, delta=f"{pct_avance_real:.1f}% Avance")
+col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
-# 5. GRÁFICOS INTERACTIVOS
+# 5. NUEVA SECCIÓN: P&S POR COMPAÑÍA (COLUMNAS J, K, L)
+st.subheader("🏢 Distribución de Paz y Salvos por Compañía")
+
+# Calcular los totales por compañía según columnas J, K y L
+total_efi = int(df_filtrado['P&S_EFI'].sum())
+total_ext = int(df_filtrado['P&S_EXT'].sum())
+total_sgh = int(df_filtrado['P&S_SGH'].sum())
+
+# Crear sub-columnas para métricas y gráfico por empresa
+c_emp1, c_emp2 = st.columns([1, 2])
+
+with c_emp1:
+    st.markdown("**Totales Requeridos por Empresa:**")
+    st.metric("Eficacia S.A. (P&S_EFI)", total_efi)
+    st.metric("Extras S.A. (P&S_EXT)", total_ext)
+    st.metric("Eficacia SGH (P&S_SGH)", total_sgh)
+
+with c_emp2:
+    df_companias = pd.DataFrame({
+        'Compañía': ['Eficacia S.A.', 'Extras S.A.', 'Eficacia SGH'],
+        'Paz y Salvos Requeridos': [total_efi, total_ext, total_sgh]
+    })
+    
+    fig_comp = px.pie(
+        df_companias, 
+        values='Paz y Salvos Requeridos', 
+        names='Compañía', 
+        hole=0.4,
+        color='Compañía',
+        color_discrete_map={'Eficacia S.A.': '#1E3A8A', 'Extras S.A.': '#0284C7', 'Eficacia SGH': '#38BDF8'}
+    )
+    fig_comp.update_traces(textposition='inside', textinfo='percent+label+value')
+    st.plotly_chart(fig_comp, use_container_width=True)
+
+st.markdown("---")
+
+# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y DIRECTOR
 g1, g2 = st.columns(2)
 
 with g1:
     st.subheader("📊 Avance por Responsable (Distribución)")
-    df_resp = df_filtrado.groupby('Distribucción')['avance_num'].mean().reset_index()
-    df_resp['% Avance'] = df_resp['avance_num'] * 100
+    df_resp = df_filtrado.groupby('Distribucción')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
+    df_resp['% Avance'] = (df_resp['p&s tramitados'] / df_resp['P&S requeridos'] * 100).fillna(0)
     fig1 = px.bar(
         df_resp, x='Distribucción', y='% Avance',
-        text_auto='.1f', color='% Avance', color_continuous_scale="Blues"
+        text_auto='.1f', color='% Avance', color_continuous_scale="Blues",
+        hover_data=['P&S requeridos', 'p&s tramitados']
     )
     st.plotly_chart(fig1, use_container_width=True)
 
 with g2:
     st.subheader("👨‍💼 Avance por Director Responsable")
-    df_dir = df_filtrado.groupby('Director responsable')['avance_num'].mean().reset_index()
-    df_dir['% Avance'] = df_dir['avance_num'] * 100
+    df_dir = df_filtrado.groupby('Director responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
+    df_dir['% Avance'] = (df_dir['p&s tramitados'] / df_dir['P&S requeridos'] * 100).fillna(0)
     fig2 = px.bar(
         df_dir, x='Director responsable', y='% Avance',
-        text_auto='.1f', color='% Avance', color_continuous_scale="Greens"
+        text_auto='.1f', color='% Avance', color_continuous_scale="Greens",
+        hover_data=['P&S requeridos', 'p&s tramitados']
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-# 6. TABLA INTERACTIVA DETALLADA
+# 7. TABLA DETALLADA
 st.subheader("📋 Detalle Filtrado de Proveedores")
-columnas_mostrar = ['PROVEEDOR', 'categoria de compra', 'Area Responsable', 'Director responsable', 'Distribucción', 'avance', 'Resultado Envío Script']
+columnas_mostrar = ['PROVEEDOR', 'categoria de compra', 'Area Responsable', 'Director responsable', 'Distribucción', 'P&S_EFI', 'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 'avance', 'Resultado Envío Script']
 cols_existentes = [c for c in columnas_mostrar if c in df_filtrado.columns]
 
 st.dataframe(df_filtrado[cols_existentes], use_container_width=True)
