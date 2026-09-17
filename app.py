@@ -118,7 +118,7 @@ with c_emp2:
 
 st.markdown("---")
 
-# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y DIRECTOR
+# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA RESPONSABLE (REEMPLAZADO DIRECTOR)
 g1, g2 = st.columns(2)
 
 with g1:
@@ -133,11 +133,13 @@ with g1:
     st.plotly_chart(fig1, use_container_width=True)
 
 with g2:
-    st.subheader("👨‍💼 Avance por Director Responsable")
-    df_dir = df_filtrado.groupby('Director responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
-    df_dir['% Avance'] = (df_dir['p&s tramitados'] / df_dir['P&S requeridos'] * 100).fillna(0)
+    st.subheader("🏢 Avance por Área Responsable")
+    df_area = df_filtrado.groupby('Area Responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
+    df_area['% Avance'] = (df_area['p&s tramitados'] / df_area['P&S requeridos'] * 100).fillna(0)
+    # Filtrar solo áreas que tengan requerimientos activos para limpiar el gráfico
+    df_area = df_area[df_area['P&S requeridos'] > 0]
     fig2 = px.bar(
-        df_dir, x='Director responsable', y='% Avance',
+        df_area, x='Area Responsable', y='% Avance',
         text_auto='.1f', color='% Avance', color_continuous_scale="Greens",
         hover_data=['P&S requeridos', 'p&s tramitados']
     )
@@ -145,12 +147,10 @@ with g2:
 
 st.markdown("---")
 
-# 7. NUEVO GRÁFICO: AVANCE POR CATEGORÍA DE COMPRA
+# 7. AVANCE POR CATEGORÍA DE COMPRA
 st.subheader("🏷️ Avance por Categoría de Compra")
 df_cat = df_filtrado.groupby('categoria de compra')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
 df_cat['% Avance'] = (df_cat['p&s tramitados'] / df_cat['P&S requeridos'] * 100).fillna(0)
-
-# Filtrar solo categorías que tengan al menos 1 P&S requerido para limpiar la vista
 df_cat = df_cat[df_cat['P&S requeridos'] > 0].sort_values(by='% Avance', ascending=True)
 
 fig_cat = px.bar(
