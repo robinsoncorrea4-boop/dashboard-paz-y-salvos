@@ -3,13 +3,56 @@ import pandas as pd
 import plotly.express as px
 
 # ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA WEB
+# 1. CONFIGURACIÓN DE PÁGINA WEB Y ESTILOS
 # ==========================================
 st.set_page_config(
     page_title="Dashboard Paz y Salvos 2026-I | Eficacia",
     page_icon="📊",
     layout="wide"
 )
+
+# Estilo personalizado para el botón de abrir/cerrar la barra lateral (Sidebar)
+st.markdown("""
+    <style>
+    /* Estilizar el botón que despliega la barra lateral */
+    button[data-testid="stSidebarCollapseButton"], 
+    button[data-testid="stBaseButton-headerNoPadding"],
+    [data-testid="collapsedControl"] button {
+        background-color: #1E3A8A !important;
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 6px 14px !important;
+        font-weight: bold !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2) !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+    }
+
+    /* Efecto al pasar el cursor (Hover) */
+    button[data-testid="stSidebarCollapseButton"]:hover, 
+    button[data-testid="stBaseButton-headerNoPadding"]:hover,
+    [data-testid="collapsedControl"] button:hover {
+        background-color: #0284C7 !important;
+        transform: scale(1.05);
+    }
+
+    /* Ocultar el icono predeterminado de flechas (>>) */
+    button[data-testid="stSidebarCollapseButton"] svg, 
+    button[data-testid="stBaseButton-headerNoPadding"] svg,
+    [data-testid="collapsedControl"] button svg {
+        display: none !important;
+    }
+
+    /* Insertar texto legible "🔍 Filtros" */
+    button[data-testid="stSidebarCollapseButton"]::after, 
+    button[data-testid="stBaseButton-headerNoPadding"]::after,
+    [data-testid="collapsedControl"] button::after {
+        content: "🔍 Filtros";
+        font-size: 14px;
+        color: white;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 2. ENLACE A GOOGLE SHEETS
