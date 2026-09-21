@@ -2,45 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA WEB Y ESTILOS
-# ==========================================
+# 1. CONFIGURACIÓN DE PÁGINA WEB
 st.set_page_config(
     page_title="Dashboard Paz y Salvos 2026-I | Eficacia",
     page_icon="📊",
     layout="wide"
 )
 
-# Estilo personalizado para botones y elementos en verde manzana
-st.markdown("""
-    <style>
-    /* Estilo para el botón Verde Manzana de Filtros */
-    div.stButton > button:first-child {
-        background-color: #22C55E !important; /* Verde Manzana */
-        color: white !important;
-        border-radius: 8px !important;
-        padding: 8px 20px !important;
-        font-weight: bold !important;
-        font-size: 16px !important;
-        border: none !important;
-        box-shadow: 0px 4px 10px rgba(34, 197, 94, 0.3) !important;
-        transition: all 0.3s ease !important;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: #16A34A !important; /* Verde más intenso */
-        transform: scale(1.03);
-    }
-    
-    /* Resaltar el encabezado de filtros dentro del sidebar */
-    [data-testid="stSidebar"] h2 {
-        color: #16A34A !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Título Principal
+st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
+st.caption("Eficacia S.A. | Área de Compras e Inventario")
 
-# ==========================================
-# 2. ENLACE A GOOGLE SHEETS
-# ==========================================
+# 2. ENLACE A TU GOOGLE SHEET (Pestaña 'proveedores', GID=144580645)
 SHEET_ID = "1OEkm12emw4sUHjC5r2BdPa9FKBQV6J8TUnVKJi9K_5I"
 GID = "144580645"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
@@ -66,14 +39,12 @@ except Exception as e:
     st.error(f"Error al conectar con Google Sheets: {e}")
     st.stop()
 
-# ==========================================
-# 3. BARRA LATERAL (LOGO Y FILTROS)
-# ==========================================
-# Cargar Logo de Eficacia
+# 3. FILTROS DINÁMICOS EN LA BARRA LATERAL (SIDEBAR)
+# Cargar Logo de Eficacia si existe
 try:
     st.sidebar.image("logo_eficacia.png", use_container_width=True)
 except Exception:
-    st.sidebar.warning("No se pudo cargar 'logo_eficacia.png'")
+    pass
 
 st.sidebar.header("🔍 Filtros de Visualización")
 
@@ -89,19 +60,6 @@ sel_cat = st.sidebar.selectbox("Categoría de Compra", cat_list)
 area_list = ["Todos"] + sorted([str(x) for x in df['Area Responsable'].dropna().unique()])
 sel_area = st.sidebar.selectbox("Área Responsable", area_list)
 
-# ==========================================
-# ENCABEZADO Y BOTÓN VERDE MANZANA "FILTROS"
-# ==========================================
-col_btn, col_blank = st.columns([1, 5])
-with col_btn:
-    # Botón visual Verde Manzana que indica al usuario los filtros
-    if st.button("🔍 Filtros"):
-        st.toast("👈 Selecciona tus opciones en el menú lateral de filtros.", icon="🔍")
-
-# Encabezado Principal
-st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
-st.caption("Eficacia S.A. | Área de Compras e Inventario")
-
 # Aplicar filtros dinámicos
 df_filtrado = df.copy()
 
@@ -114,9 +72,7 @@ if sel_cat != "Todos":
 if sel_area != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Area Responsable'] == sel_area]
 
-# ==========================================
 # 4. TARJETAS DE INDICADORES CLAVE GENERALES
-# ==========================================
 total_prov = len(df_filtrado)
 req_total = int(df_filtrado['P&S requeridos'].sum())
 tramitados_total = int(df_filtrado['p&s tramitados'].sum())
@@ -134,14 +90,11 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
-# ==========================================
 # 5. CÁLCULO Y GRÁFICO DE AVANCE DE P&S POR COMPAÑÍA
-# ==========================================
 def calcular_recibidos(row):
     tramitados = row['p&s tramitados']
     rec_efi = 1 if (row['P&S_EFI'] == 1 and tramitados >= 1) else 0
     
-    # Evaluar Extras S.A.
     if row['P&S_EXT'] == 1:
         if row['P&S_EFI'] == 1 and tramitados >= 2:
             rec_ext = 1
@@ -152,7 +105,6 @@ def calcular_recibidos(row):
     else:
         rec_ext = 0
 
-    # Evaluar Eficacia SGH
     if row['P&S_SGH'] == 1:
         if tramitados >= row['P&S requeridos'] and row['P&S requeridos'] > 0:
             rec_sgh = 1
@@ -163,20 +115,16 @@ def calcular_recibidos(row):
 
     return pd.Series([rec_efi, rec_ext, rec_sgh])
 
-# Aplicar lógica de recibidos fila por fila
 df_filtrado[['Rec_EFI', 'Rec_EXT', 'Rec_SGH']] = df_filtrado.apply(calcular_recibidos, axis=1)
 
-# Totales Requeridos
 total_efi_req = int(df_filtrado['P&S_EFI'].sum())
 total_ext_req = int(df_filtrado['P&S_EXT'].sum())
 total_sgh_req = int(df_filtrado['P&S_SGH'].sum())
 
-# Totales Recibidos
 recibidos_efi = int(df_filtrado['Rec_EFI'].sum())
 recibidos_ext = int(df_filtrado['Rec_EXT'].sum())
 recibidos_sgh = int(df_filtrado['Rec_SGH'].sum())
 
-# Porcentajes de Avance
 pct_efi = (recibidos_efi / total_efi_req * 100) if total_efi_req > 0 else 0
 pct_ext = (recibidos_ext / total_ext_req * 100) if total_ext_req > 0 else 0
 pct_sgh = (recibidos_sgh / total_sgh_req * 100) if total_sgh_req > 0 else 0
@@ -217,9 +165,7 @@ with c_emp2:
 
 st.markdown("---")
 
-# ==========================================
 # 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA
-# ==========================================
 g1, g2 = st.columns(2)
 
 with g1:
@@ -235,15 +181,10 @@ with g1:
 
 with g2:
     st.subheader("🏢 Avance por Área Responsable")
-    
-    # Agrupar y calcular % de avance
     df_area = df_filtrado.groupby('Area Responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
     df_area['% Avance'] = (df_area['p&s tramitados'] / df_area['P&S requeridos'] * 100).fillna(0)
-    
-    # Filtrar solo áreas activas y ordenar
     df_area = df_area[df_area['P&S requeridos'] > 0].sort_values(by='% Avance', ascending=True)
 
-    # Gráfico de Barras Horizontal
     fig2 = px.bar(
         df_area, 
         y='Area Responsable', 
@@ -268,9 +209,7 @@ with g2:
 
 st.markdown("---")
 
-# ==========================================
 # 7. AVANCE POR CATEGORÍA DE COMPRA
-# ==========================================
 st.subheader("🏷️ Avance por Categoría de Compra")
 df_cat = df_filtrado.groupby('categoria de compra')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
 df_cat['% Avance'] = (df_cat['p&s tramitados'] / df_cat['P&S requeridos'] * 100).fillna(0)
@@ -292,9 +231,7 @@ st.plotly_chart(fig_cat, use_container_width=True)
 
 st.markdown("---")
 
-# ==========================================
 # 8. TABLA DETALLADA
-# ==========================================
 st.subheader("📋 Detalle Filtrado de Proveedores")
 columnas_mostrar = [
     'PROVEEDOR', 'categoria de compra', 'Area Responsable', 
