@@ -11,45 +11,45 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilo personalizado para el botón de abrir/cerrar la barra lateral (Sidebar)
+# Estilo personalizado exactamente para el botón de la esquina superior izquierda (>> cuando el sidebar está cerrado)
 st.markdown("""
     <style>
-    /* Estilizar el botón que despliega la barra lateral */
-    button[data-testid="stSidebarCollapseButton"], 
-    button[data-testid="stBaseButton-headerNoPadding"],
-    [data-testid="collapsedControl"] button {
-        background-color: #1E3A8A !important;
+    /* Selector específico para el botón colapsado de la esquina superior izquierda */
+    [data-testid="collapsedControl"] button,
+    button[data-testid="stSidebarCollapseButton"] {
+        background-color: #22C55E !important; /* Verde Manzana brillante */
         color: white !important;
         border-radius: 8px !important;
-        padding: 6px 14px !important;
+        padding: 6px 16px !important;
         font-weight: bold !important;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0px 4px 12px rgba(34, 197, 94, 0.4) !important;
         transition: all 0.3s ease !important;
         border: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     /* Efecto al pasar el cursor (Hover) */
-    button[data-testid="stSidebarCollapseButton"]:hover, 
-    button[data-testid="stBaseButton-headerNoPadding"]:hover,
-    [data-testid="collapsedControl"] button:hover {
-        background-color: #0284C7 !important;
+    [data-testid="collapsedControl"] button:hover,
+    button[data-testid="stSidebarCollapseButton"]:hover {
+        background-color: #16A34A !important; /* Verde Manzana más intenso */
         transform: scale(1.05);
     }
 
-    /* Ocultar el icono predeterminado de flechas (>>) */
-    button[data-testid="stSidebarCollapseButton"] svg, 
-    button[data-testid="stBaseButton-headerNoPadding"] svg,
-    [data-testid="collapsedControl"] button svg {
+    /* Ocultar el icono predeterminado de flechas pequeñas (>>) */
+    [data-testid="collapsedControl"] button svg,
+    button[data-testid="stSidebarCollapseButton"] svg {
         display: none !important;
     }
 
     /* Insertar texto legible "🔍 Filtros" */
-    button[data-testid="stSidebarCollapseButton"]::after, 
-    button[data-testid="stBaseButton-headerNoPadding"]::after,
-    [data-testid="collapsedControl"] button::after {
+    [data-testid="collapsedControl"] button::after,
+    button[data-testid="stSidebarCollapseButton"]::after {
         content: "🔍 Filtros";
         font-size: 14px;
         color: white;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
