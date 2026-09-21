@@ -84,8 +84,7 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
-# 5. CÁLCULO Y DISTRIBUCIÓN DE P&S RECIBIDOS POR COMPAÑÍA
-# Función para desglosar la columna 'p&s tramitados' (M) entre las columnas J, K, L
+# 5. CÁLCULO Y GRÁFICO DE AVANCE DE P&S POR COMPAÑÍA
 def calcular_recibidos(row):
     tramitados = row['p&s tramitados']
     rec_efi = 1 if (row['P&S_EFI'] == 1 and tramitados >= 1) else 0
@@ -112,43 +111,57 @@ def calcular_recibidos(row):
 
     return pd.Series([rec_efi, rec_ext, rec_sgh])
 
-# Generar columnas de recibidos por fila
+# Aplicar lógica de recibidos fila por fila
 df_filtrado[['Rec_EFI', 'Rec_EXT', 'Rec_SGH']] = df_filtrado.apply(calcular_recibidos, axis=1)
 
-# Totales requeridos vs recibidos
+# Totales Requeridos
 total_efi_req = int(df_filtrado['P&S_EFI'].sum())
 total_ext_req = int(df_filtrado['P&S_EXT'].sum())
 total_sgh_req = int(df_filtrado['P&S_SGH'].sum())
 
+# Totales Recibidos
 recibidos_efi = int(df_filtrado['Rec_EFI'].sum())
 recibidos_ext = int(df_filtrado['Rec_EXT'].sum())
 recibidos_sgh = int(df_filtrado['Rec_SGH'].sum())
 
-st.subheader("🏢 Distribución de Paz y Salvos Recibidos por Compañía")
+# Porcentajes de Avance
+pct_efi = (recibidos_efi / total_efi_req * 100) if total_efi_req > 0 else 0
+pct_ext = (recibidos_ext / total_ext_req * 100) if total_ext_req > 0 else 0
+pct_sgh = (recibidos_sgh / total_sgh_req * 100) if total_sgh_req > 0 else 0
+
+st.subheader("🏢 Avance y Distribución de Paz y Salvos por Compañía")
 
 c_emp1, c_emp2 = st.columns([1, 2])
 
 with c_emp1:
-    st.markdown("**Totales Recibidos / Requeridos:**")
-    st.metric("Eficacia S.A. (Recibidos)", f"{recibidos_efi} / {total_efi_req}")
-    st.metric("Extras S.A. (Recibidos)", f"{recibidos_ext} / {total_ext_req}")
-    st.metric("Eficacia SGH (Recibidos)", f"{recibidos_sgh} / {total_sgh_req}")
+    st.markdown("**Estado de Recibo por Empresa:**")
+    st.metric("Eficacia S.A.", f"{recibidos_efi} / {total_efi_req}", delta=f"{pct_efi:.1f}% Avance")
+    st.metric("Extras S.A.", f"{recibidos_ext} / {total_ext_req}", delta=f"{pct_ext:.1f}% Avance")
+    st.metric("Eficacia SGH", f"{recibidos_sgh} / {total_sgh_req}", delta=f"{pct_sgh:.1f}% Avance")
 
 with c_emp2:
-    df_companias = pd.DataFrame({
-        'Compañía': ['Eficacia S.A.', 'Extras S.A.', 'Eficacia SGH'],
-        'Paz y Salvos Recibidos': [recibidos_efi, recibidos_ext, recibidos_sgh]
-    })
-    
-    fig_comp = px.pie(
-        df_companias, 
-        values='Paz y Salvos Recibidos', 
-        names='Compañía', 
-        hole=0.4,
-        color='Compañía',
-        color_discrete_map={'Eficacia S.A.': '#1E3A8A', 'Extras S.A.': '#0284C7', 'Eficacia SGH': '#38BDF8'}
+    # Estructurar datos para el gráfico comparativo (Requeridos vs Recibidos)
+    data_comp = [
+        {'Compañía': 'Eficacia S.A.', 'Estado': 'Recibidos', 'Cantidad': recibidos_efi},
+        {'Compañía': 'Eficacia S.A.', 'Estado': 'Requeridos', 'Cantidad': total_efi_req},
+        {'Compañía': 'Extras S.A.', 'Estado': 'Recibidos', 'Cantidad': recibidos_ext},
+        {'Compañía': 'Extras S.A.', 'Estado': 'Requeridos', 'Cantidad': total_ext_req},
+        {'Compañía': 'Eficacia SGH', 'Estado': 'Recibidos', 'Cantidad': recibidos_sgh},
+        {'Compañía': 'Eficacia SGH', 'Estado': 'Requeridos', 'Cantidad': total_sgh_req},
+    ]
+    df_chart_comp = pd.DataFrame(data_comp)
+
+    fig_comp = px.bar(
+        df_chart_comp,
+        x='Compañía',
+        y='Cantidad',
+        color='Estado',
+        barmode='group',
+        text_auto=True,
+        title="Comparativo: Paz y Salvos Requeridos vs. Recibidos",
+        color_discrete_map={'Recibidos': '#16A34A', 'Requeridos': '#1E3A8A'}
     )
-    fig_comp.update_traces(textposition='inside', textinfo='percent+label+value')
+    fig_comp.update_layout(yaxis_title="Cantidad de Documentos", xaxis_title="")
     st.plotly_chart(fig_comp, use_container_width=True)
 
 st.markdown("---")
