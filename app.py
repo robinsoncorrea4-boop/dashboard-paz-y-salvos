@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import io  # Requerido para procesar los archivos Excel en memoria
 
 # ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA WEB
@@ -246,7 +247,7 @@ st.plotly_chart(fig_cat, use_container_width=True)
 st.markdown("---")
 
 # ==========================================
-# 8. TABLA DETALLADA Y BOTONES DE DESCARGA
+# 8. TABLA DETALLADA Y BOTONES DE DESCARGA EN EXCEL
 # ==========================================
 st.subheader("📋 Detalle Filtrado de Proveedores")
 
@@ -258,31 +259,38 @@ columnas_mostrar = [
 ]
 cols_existentes = [c for c in columnas_mostrar if c in df.columns]
 
-# --- BOTONES DE DESCARGA EN EXCEL / CSV ---
+# Función para convertir DataFrame a Excel en memoria (.xlsx)
+def to_excel(df_to_export):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_to_export.to_excel(writer, index=False, sheet_name='Paz_y_Salvos')
+    return output.getvalue()
+
+# --- BOTONES DE DESCARGA EN EXCEL (.xlsx) ---
 col_desc1, col_desc2 = st.columns(2)
 
 # 1. Preparar datos de la vista FILTRADA
-csv_filtrado = df_filtrado[cols_existentes].to_csv(index=False).encode('utf-8-sig')
+excel_filtrado = to_excel(df_filtrado[cols_existentes])
 nombre_area = sel_area.replace(" ", "_") if sel_area != "Todos" else "Filtrado"
 
 with col_desc1:
     st.download_button(
-        label=f"📥 Descargar Selección ({sel_area if sel_area != 'Todos' else 'Filtro Actual'})",
-        data=csv_filtrado,
-        file_name=f"Paz_y_Salvos_{nombre_area}.csv",
-        mime="text/csv",
+        label=f"📥 Descargar Selección ({sel_area if sel_area != 'Todos' else 'Filtro Actual'}) [.xlsx]",
+        data=excel_filtrado,
+        file_name=f"Paz_y_Salvos_{nombre_area}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
 # 2. Preparar datos de TODAS las áreas (Sin filtros)
-csv_completo = df[cols_existentes].to_csv(index=False).encode('utf-8-sig')
+excel_completo = to_excel(df[cols_existentes])
 
 with col_desc2:
     st.download_button(
-        label="🌐 Descargar Todo (Todas las Áreas)",
-        data=csv_completo,
-        file_name="Paz_y_Salvos_COMPLETO_Todas_Las_Areas.csv",
-        mime="text/csv",
+        label="🌐 Descargar Todo (Todas las Áreas) [.xlsx]",
+        data=excel_completo,
+        file_name="Paz_y_Salvos_COMPLETO_Todas_Las_Areas.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
