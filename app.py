@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA WEB
+# ==========================================
 st.set_page_config(
     page_title="Dashboard Paz y Salvos 2026-I | Eficacia",
     page_icon="📊",
@@ -13,7 +15,9 @@ st.set_page_config(
 st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
 st.caption("Eficacia S.A. | Área de Compras e Inventario")
 
-# 2. ENLACE A TU GOOGLE SHEET (Pestaña 'proveedores', GID=144580645)
+# ==========================================
+# 2. ENLACE A GOOGLE SHEETS
+# ==========================================
 SHEET_ID = "1OEkm12emw4sUHjC5r2BdPa9FKBQV6J8TUnVKJi9K_5I"
 GID = "144580645"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
@@ -39,8 +43,10 @@ except Exception as e:
     st.error(f"Error al conectar con Google Sheets: {e}")
     st.stop()
 
+# ==========================================
 # 3. FILTROS DINÁMICOS EN LA BARRA LATERAL (SIDEBAR)
-# Cargar Logo de Eficacia si existe
+# ==========================================
+# Cargar Logo de Eficacia
 try:
     st.sidebar.image("logo_eficacia.png", use_container_width=True)
 except Exception:
@@ -72,7 +78,9 @@ if sel_cat != "Todos":
 if sel_area != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Area Responsable'] == sel_area]
 
+# ==========================================
 # 4. TARJETAS DE INDICADORES CLAVE GENERALES
+# ==========================================
 total_prov = len(df_filtrado)
 req_total = int(df_filtrado['P&S requeridos'].sum())
 tramitados_total = int(df_filtrado['p&s tramitados'].sum())
@@ -90,7 +98,9 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
+# ==========================================
 # 5. CÁLCULO Y GRÁFICO DE AVANCE DE P&S POR COMPAÑÍA
+# ==========================================
 def calcular_recibidos(row):
     tramitados = row['p&s tramitados']
     rec_efi = 1 if (row['P&S_EFI'] == 1 and tramitados >= 1) else 0
@@ -165,7 +175,9 @@ with c_emp2:
 
 st.markdown("---")
 
+# ==========================================
 # 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA
+# ==========================================
 g1, g2 = st.columns(2)
 
 with g1:
@@ -209,7 +221,9 @@ with g2:
 
 st.markdown("---")
 
+# ==========================================
 # 7. AVANCE POR CATEGORÍA DE COMPRA
+# ==========================================
 st.subheader("🏷️ Avance por Categoría de Compra")
 df_cat = df_filtrado.groupby('categoria de compra')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
 df_cat['% Avance'] = (df_cat['p&s tramitados'] / df_cat['P&S requeridos'] * 100).fillna(0)
@@ -231,14 +245,48 @@ st.plotly_chart(fig_cat, use_container_width=True)
 
 st.markdown("---")
 
-# 8. TABLA DETALLADA
+# ==========================================
+# 8. TABLA DETALLADA Y BOTONES DE DESCARGA
+# ==========================================
 st.subheader("📋 Detalle Filtrado de Proveedores")
+
 columnas_mostrar = [
     'PROVEEDOR', 'categoria de compra', 'Area Responsable', 
     'Director responsable', 'Distribucción', 'P&S_EFI', 
     'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 
     'avance', 'Resultado Envío Script'
 ]
-cols_existentes = [c for c in columnas_mostrar if c in df_filtrado.columns]
+cols_existentes = [c for c in columnas_mostrar if c in df.columns]
 
+# --- BOTONES DE DESCARGA EN EXCEL / CSV ---
+col_desc1, col_desc2 = st.columns(2)
+
+# 1. Preparar datos de la vista FILTRADA
+csv_filtrado = df_filtrado[cols_existentes].to_csv(index=False).encode('utf-8-sig')
+nombre_area = sel_area.replace(" ", "_") if sel_area != "Todos" else "Filtrado"
+
+with col_desc1:
+    st.download_button(
+        label=f"📥 Descargar Selección ({sel_area if sel_area != 'Todos' else 'Filtro Actual'})",
+        data=csv_filtrado,
+        file_name=f"Paz_y_Salvos_{nombre_area}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+
+# 2. Preparar datos de TODAS las áreas (Sin filtros)
+csv_completo = df[cols_existentes].to_csv(index=False).encode('utf-8-sig')
+
+with col_desc2:
+    st.download_button(
+        label="🌐 Descargar Todo (Todas las Áreas)",
+        data=csv_completo,
+        file_name="Paz_y_Salvos_COMPLETO_Todas_Las_Areas.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Muestra de la tabla interactiva
 st.dataframe(df_filtrado[cols_existentes], use_container_width=True)
