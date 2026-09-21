@@ -42,7 +42,6 @@ except Exception as e:
 try:
     st.sidebar.image("logo_eficacia.png", use_container_width=True)
 except Exception:
-    st.sidebar.warning("🔍 Filtros de Visualización")
 
 st.sidebar.header("🔍 Filtros de Visualización")
 
