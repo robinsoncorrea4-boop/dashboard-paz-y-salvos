@@ -11,45 +11,29 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilo personalizado exactamente para el botón de la esquina superior izquierda (>> cuando el sidebar está cerrado)
+# Estilo personalizado para botones y elementos en verde manzana
 st.markdown("""
     <style>
-    /* Selector específico para el botón colapsado de la esquina superior izquierda */
-    [data-testid="collapsedControl"] button,
-    button[data-testid="stSidebarCollapseButton"] {
-        background-color: #22C55E !important; /* Verde Manzana brillante */
+    /* Estilo para el botón Verde Manzana de Filtros */
+    div.stButton > button:first-child {
+        background-color: #22C55E !important; /* Verde Manzana */
         color: white !important;
         border-radius: 8px !important;
-        padding: 6px 16px !important;
+        padding: 8px 20px !important;
         font-weight: bold !important;
-        box-shadow: 0px 4px 12px rgba(34, 197, 94, 0.4) !important;
-        transition: all 0.3s ease !important;
+        font-size: 16px !important;
         border: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        box-shadow: 0px 4px 10px rgba(34, 197, 94, 0.3) !important;
+        transition: all 0.3s ease !important;
     }
-
-    /* Efecto al pasar el cursor (Hover) */
-    [data-testid="collapsedControl"] button:hover,
-    button[data-testid="stSidebarCollapseButton"]:hover {
-        background-color: #16A34A !important; /* Verde Manzana más intenso */
-        transform: scale(1.05);
+    div.stButton > button:first-child:hover {
+        background-color: #16A34A !important; /* Verde más intenso */
+        transform: scale(1.03);
     }
-
-    /* Ocultar el icono predeterminado de flechas pequeñas (>>) */
-    [data-testid="collapsedControl"] button svg,
-    button[data-testid="stSidebarCollapseButton"] svg {
-        display: none !important;
-    }
-
-    /* Insertar texto legible "🔍 Filtros" */
-    [data-testid="collapsedControl"] button::after,
-    button[data-testid="stSidebarCollapseButton"]::after {
-        content: "🔍 Filtros";
-        font-size: 14px;
-        color: white;
-        font-weight: 600;
+    
+    /* Resaltar el encabezado de filtros dentro del sidebar */
+    [data-testid="stSidebar"] h2 {
+        color: #16A34A !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -104,6 +88,15 @@ sel_cat = st.sidebar.selectbox("Categoría de Compra", cat_list)
 
 area_list = ["Todos"] + sorted([str(x) for x in df['Area Responsable'].dropna().unique()])
 sel_area = st.sidebar.selectbox("Área Responsable", area_list)
+
+# ==========================================
+# ENCABEZADO Y BOTÓN VERDE MANZANA "FILTROS"
+# ==========================================
+col_btn, col_blank = st.columns([1, 5])
+with col_btn:
+    # Botón visual Verde Manzana que indica al usuario los filtros
+    if st.button("🔍 Filtros"):
+        st.toast("👈 Selecciona tus opciones en el menú lateral de filtros.", icon="🔍")
 
 # Encabezado Principal
 st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
