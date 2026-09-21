@@ -84,30 +84,65 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
-# 5. DISTRIBUCIÓN DE P&S POR COMPAÑÍA (COLUMNAS J, K, L)
-st.subheader("🏢 Distribución de Paz y Salvos por Compañía")
+# 5. CÁLCULO Y DISTRIBUCIÓN DE P&S RECIBIDOS POR COMPAÑÍA
+# Función para desglosar la columna 'p&s tramitados' (M) entre las columnas J, K, L
+def calcular_recibidos(row):
+    tramitados = row['p&s tramitados']
+    rec_efi = 1 if (row['P&S_EFI'] == 1 and tramitados >= 1) else 0
+    
+    # Evaluar Extras S.A.
+    if row['P&S_EXT'] == 1:
+        if row['P&S_EFI'] == 1 and tramitados >= 2:
+            rec_ext = 1
+        elif row['P&S_EFI'] == 0 and tramitados >= 1:
+            rec_ext = 1
+        else:
+            rec_ext = 0
+    else:
+        rec_ext = 0
 
-total_efi = int(df_filtrado['P&S_EFI'].sum())
-total_ext = int(df_filtrado['P&S_EXT'].sum())
-total_sgh = int(df_filtrado['P&S_SGH'].sum())
+    # Evaluar Eficacia SGH
+    if row['P&S_SGH'] == 1:
+        if tramitados >= row['P&S requeridos'] and row['P&S requeridos'] > 0:
+            rec_sgh = 1
+        else:
+            rec_sgh = 0
+    else:
+        rec_sgh = 0
+
+    return pd.Series([rec_efi, rec_ext, rec_sgh])
+
+# Generar columnas de recibidos por fila
+df_filtrado[['Rec_EFI', 'Rec_EXT', 'Rec_SGH']] = df_filtrado.apply(calcular_recibidos, axis=1)
+
+# Totales requeridos vs recibidos
+total_efi_req = int(df_filtrado['P&S_EFI'].sum())
+total_ext_req = int(df_filtrado['P&S_EXT'].sum())
+total_sgh_req = int(df_filtrado['P&S_SGH'].sum())
+
+recibidos_efi = int(df_filtrado['Rec_EFI'].sum())
+recibidos_ext = int(df_filtrado['Rec_EXT'].sum())
+recibidos_sgh = int(df_filtrado['Rec_SGH'].sum())
+
+st.subheader("🏢 Distribución de Paz y Salvos Recibidos por Compañía")
 
 c_emp1, c_emp2 = st.columns([1, 2])
 
 with c_emp1:
-    st.markdown("**Totales Requeridos por Empresa:**")
-    st.metric("Eficacia S.A. (P&S_EFI)", total_efi)
-    st.metric("Extras S.A. (P&S_EXT)", total_ext)
-    st.metric("Eficacia SGH (P&S_SGH)", total_sgh)
+    st.markdown("**Totales Recibidos / Requeridos:**")
+    st.metric("Eficacia S.A. (Recibidos)", f"{recibidos_efi} / {total_efi_req}")
+    st.metric("Extras S.A. (Recibidos)", f"{recibidos_ext} / {total_ext_req}")
+    st.metric("Eficacia SGH (Recibidos)", f"{recibidos_sgh} / {total_sgh_req}")
 
 with c_emp2:
     df_companias = pd.DataFrame({
         'Compañía': ['Eficacia S.A.', 'Extras S.A.', 'Eficacia SGH'],
-        'Paz y Salvos Requeridos': [total_efi, total_ext, total_sgh]
+        'Paz y Salvos Recibidos': [recibidos_efi, recibidos_ext, recibidos_sgh]
     })
     
     fig_comp = px.pie(
         df_companias, 
-        values='Paz y Salvos Requeridos', 
+        values='Paz y Salvos Recibidos', 
         names='Compañía', 
         hole=0.4,
         color='Compañía',
@@ -118,7 +153,7 @@ with c_emp2:
 
 st.markdown("---")
 
-# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA RESPONSABLE (REEMPLAZADO DIRECTOR)
+# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA RESPONSABLE
 g1, g2 = st.columns(2)
 
 with g1:
@@ -136,7 +171,7 @@ with g2:
     st.subheader("🏢 Avance por Área Responsable")
     df_area = df_filtrado.groupby('Area Responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
     df_area['% Avance'] = (df_area['p&s tramitados'] / df_area['P&S requeridos'] * 100).fillna(0)
-    # Filtrar solo áreas que tengan requerimientos activos para limpiar el gráfico
+    # Filtrar solo áreas que tengan requerimientos activos
     df_area = df_area[df_area['P&S requeridos'] > 0]
     fig2 = px.bar(
         df_area, x='Area Responsable', y='% Avance',
