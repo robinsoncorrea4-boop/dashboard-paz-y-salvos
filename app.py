@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA WEB
+# ==========================================
 st.set_page_config(
     page_title="Dashboard Paz y Salvos 2026-I | Eficacia",
     page_icon="📊",
@@ -13,7 +15,9 @@ st.set_page_config(
 st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
 st.caption("Eficacia S.A. | Área de Compras e Inventario")
 
-# 2. ENLACE A TU GOOGLE SHEET (Pestaña 'proveedores', GID=144580645)
+# ==========================================
+# 2. ENLACE A GOOGLE SHEETS
+# ==========================================
 SHEET_ID = "1OEkm12emw4sUHjC5r2BdPa9FKBQV6J8TUnVKJi9K_5I"
 GID = "144580645"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
@@ -39,7 +43,9 @@ except Exception as e:
     st.error(f"Error al conectar con Google Sheets: {e}")
     st.stop()
 
-# 3. FILTROS DINÁMICOS EN LA BARRA LATERAL (SIDEBAR)
+# ==========================================
+# 3. FILTROS DINÁMICOS EN LA BARRA LATERAL
+# ==========================================
 st.sidebar.header("🔍 Filtros de Visualización")
 
 resp_list = ["Todos"] + sorted([str(x) for x in df['Distribucción'].dropna().unique()])
@@ -66,7 +72,9 @@ if sel_cat != "Todos":
 if sel_area != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Area Responsable'] == sel_area]
 
+# ==========================================
 # 4. TARJETAS DE INDICADORES CLAVE GENERALES
+# ==========================================
 total_prov = len(df_filtrado)
 req_total = int(df_filtrado['P&S requeridos'].sum())
 tramitados_total = int(df_filtrado['p&s tramitados'].sum())
@@ -84,7 +92,9 @@ col4.metric("% Avance Real Global", f"{pct_avance_real:.1f}%")
 
 st.markdown("---")
 
+# ==========================================
 # 5. CÁLCULO Y GRÁFICO DE AVANCE DE P&S POR COMPAÑÍA
+# ==========================================
 def calcular_recibidos(row):
     tramitados = row['p&s tramitados']
     rec_efi = 1 if (row['P&S_EFI'] == 1 and tramitados >= 1) else 0
@@ -140,7 +150,6 @@ with c_emp1:
     st.metric("Eficacia SGH", f"{recibidos_sgh} / {total_sgh_req}", delta=f"{pct_sgh:.1f}% Avance")
 
 with c_emp2:
-    # Estructurar datos para el gráfico comparativo (Requeridos vs Recibidos)
     data_comp = [
         {'Compañía': 'Eficacia S.A.', 'Estado': 'Recibidos', 'Cantidad': recibidos_efi},
         {'Compañía': 'Eficacia S.A.', 'Estado': 'Requeridos', 'Cantidad': total_efi_req},
@@ -166,7 +175,9 @@ with c_emp2:
 
 st.markdown("---")
 
-# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA RESPONSABLE
+# ==========================================
+# 6. GRÁFICOS DE AVANCE POR RESPONSABLE Y ÁREA
+# ==========================================
 g1, g2 = st.columns(2)
 
 with g1:
@@ -182,20 +193,43 @@ with g1:
 
 with g2:
     st.subheader("🏢 Avance por Área Responsable")
+    
+    # Agrupar y calcular % de avance
     df_area = df_filtrado.groupby('Area Responsable')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
     df_area['% Avance'] = (df_area['p&s tramitados'] / df_area['P&S requeridos'] * 100).fillna(0)
-    # Filtrar solo áreas que tengan requerimientos activos
-    df_area = df_area[df_area['P&S requeridos'] > 0]
+    
+    # Filtrar solo áreas activas y ordenar de menor a mayor para vista horizontal ascendente
+    df_area = df_area[df_area['P&S requeridos'] > 0].sort_values(by='% Avance', ascending=True)
+
+    # Gráfico de Barras Horizontal
     fig2 = px.bar(
-        df_area, x='Area Responsable', y='% Avance',
-        text_auto='.1f', color='% Avance', color_continuous_scale="Greens",
-        hover_data=['P&S requeridos', 'p&s tramitados']
+        df_area, 
+        y='Area Responsable', 
+        x='% Avance',
+        orientation='h',
+        text_auto='.1f', 
+        color='% Avance', 
+        color_continuous_scale="Greens",
+        hover_data=['P&S requeridos', 'p&s tramitados'],
+        labels={'Area Responsable': '', '% Avance': '% Avance Tramitado'}
     )
+    
+    # Altura dinámica según la cantidad de áreas activas
+    altura_dinamica = max(450, len(df_area) * 28)
+    fig2.update_layout(
+        height=altura_dinamica,
+        coloraxis_showscale=False,
+        margin=dict(l=10, r=20, t=30, b=10),
+        xaxis=dict(range=[0, 105])
+    )
+    
     st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
 
+# ==========================================
 # 7. AVANCE POR CATEGORÍA DE COMPRA
+# ==========================================
 st.subheader("🏷️ Avance por Categoría de Compra")
 df_cat = df_filtrado.groupby('categoria de compra')[['P&S requeridos', 'p&s tramitados']].sum().reset_index()
 df_cat['% Avance'] = (df_cat['p&s tramitados'] / df_cat['P&S requeridos'] * 100).fillna(0)
@@ -217,9 +251,16 @@ st.plotly_chart(fig_cat, use_container_width=True)
 
 st.markdown("---")
 
+# ==========================================
 # 8. TABLA DETALLADA
+# ==========================================
 st.subheader("📋 Detalle Filtrado de Proveedores")
-columnas_mostrar = ['PROVEEDOR', 'categoria de compra', 'Area Responsable', 'Director responsable', 'Distribucción', 'P&S_EFI', 'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 'avance', 'Resultado Envío Script']
+columnas_mostrar = [
+    'PROVEEDOR', 'categoria de compra', 'Area Responsable', 
+    'Director responsable', 'Distribucción', 'P&S_EFI', 
+    'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 
+    'avance', 'Resultado Envío Script'
+]
 cols_existentes = [c for c in columnas_mostrar if c in df_filtrado.columns]
 
 st.dataframe(df_filtrado[cols_existentes], use_container_width=True)
