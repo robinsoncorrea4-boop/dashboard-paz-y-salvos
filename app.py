@@ -17,11 +17,30 @@ st.title("📊 Control y Avance de Paz y Salvos Semestral 2026-I")
 st.caption("Eficacia S.A. | Área de Compras e Inventario")
 
 # ==========================================
-# 2. ENLACE A GOOGLE SHEETS
+# 2. ENLACE A GOOGLE SHEETS Y PROCESAMIENTO
 # ==========================================
 SHEET_ID = "1OEkm12emw4sUHjC5r2BdPa9FKBQV6J8TUnVKJi9K_5I"
 GID = "144580645"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
+
+def clasificar_estado(row):
+    """Categoriza el estado según la columna de avance y requerimientos."""
+    try:
+        req = row.get('P&S requeridos', 0)
+        tram = row.get('p&s tramitados', 0)
+        
+        # Si tiene un avance registrado en formato porcentaje/flotante
+        val_str = str(row.get('avance', '0')).replace('%', '').strip()
+        val = float(val_str) if val_str != '' else 0.0
+        
+        if val >= 100 or (req > 0 and tram >= req):
+            return "🟢 Al día"
+        elif val > 0 or tram > 0:
+            return "🟡 Parcial"
+        else:
+            return "🔴 Pendiente"
+    except Exception:
+        return "🔴 Pendiente"
 
 # Cargar datos desde Google Sheets con refresco rápido
 @st.cache_data(ttl=15)
@@ -35,6 +54,9 @@ def cargar_datos():
             df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
         else:
             df[c] = 0
+            
+    # Asignar columna de Estado Categorizado
+    df['Estado'] = df.apply(clasificar_estado, axis=1)
             
     return df
 
@@ -67,6 +89,10 @@ sel_cat = st.sidebar.selectbox("Categoría de Compra", cat_list)
 area_list = ["Todos"] + sorted([str(x) for x in df['Area Responsable'].dropna().unique()])
 sel_area = st.sidebar.selectbox("Área Responsable", area_list)
 
+# NUEVO FILTRO DE ESTADO DE AVANCE
+estado_list = ["Todos", "🟢 Al día", "🟡 Parcial", "🔴 Pendiente"]
+sel_estado = st.sidebar.selectbox("Estado (Avance)", estado_list)
+
 # Aplicar filtros dinámicos
 df_filtrado = df.copy()
 
@@ -78,6 +104,8 @@ if sel_cat != "Todos":
     df_filtrado = df_filtrado[df_filtrado['categoria de compra'] == sel_cat]
 if sel_area != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Area Responsable'] == sel_area]
+if sel_estado != "Todos":
+    df_filtrado = df_filtrado[df_filtrado['Estado'] == sel_estado]
 
 # ==========================================
 # 4. TARJETAS DE INDICADORES CLAVE GENERALES
@@ -251,11 +279,12 @@ st.markdown("---")
 # ==========================================
 st.subheader("📋 Detalle Filtrado de Proveedores")
 
+# Lista de columnas incluyendo el nuevo campo 'Estado'
 columnas_mostrar = [
     'PROVEEDOR', 'categoria de compra', 'Area Responsable', 
     'Director responsable', 'Distribucción', 'P&S_EFI', 
     'P&S_EXT', 'P&S_SGH', 'P&S requeridos', 'p&s tramitados', 
-    'avance', 'Resultado Envío Script'
+    'avance', 'Estado', 'Resultado Envío Script'
 ]
 cols_existentes = [c for c in columnas_mostrar if c in df.columns]
 
